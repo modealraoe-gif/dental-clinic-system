@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام حجز مواعيد طبيب الأسنان</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        :root { --primary: #2a9d8f; --primary-dark: #21867a; --secondary: #e9c46a; --light: #f8f9fa; --dark: #343a40; --danger: #e76f51; --success: #2a9d8f; --border: #dee2e6; }
+        body { background-color: #f5f7fa; color: var(--dark); line-height: 1.6; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        header h1 { color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 15px; }
+        header h1 i { font-size: 2.2rem; }
+        .tabs { display: flex; justify-content: center; margin-bottom: 30px; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .tab-btn { flex: 1; padding: 18px 20px; background-color: #f8f9fa; border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; color: var(--dark); display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .tab-btn:hover { background-color: #e9ecef; }
+        .tab-btn.active { background-color: var(--primary); color: white; }
+        .tab-content { display: none; background-color: white; border-radius: 10px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--dark); }
+        input, select { width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; transition: border 0.3s; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        .btn { display: inline-block; padding: 12px 25px; background-color: var(--primary); color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.3s; }
+        .btn:hover { background-color: var(--primary-dark); }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 20px; }
+        .calendar-header { background-color: var(--primary); color: white; padding: 12px; text-align: center; font-weight: 600; border-radius: 6px; }
+        .calendar-day { background-color: #f8f9fa; border: 1px solid var(--border); border-radius: 6px; padding: 15px 10px; min-height: 120px; position: relative; }
+        .calendar-day.today { background-color: rgba(42,157,143,0.1); border-color: var(--primary); }
+        .day-number { position: absolute; top: 10px; left: 10px; font-weight: 600; color: var(--dark); }
+        .appointments { margin-top: 30px; font-size: 0.9rem; }
+        .appointment-item { background-color: rgba(233,196,106,0.2); margin-bottom: 8px; padding: 8px; border-radius: 4px; border-right: 3px solid var(--secondary); }
+        .appointment-item p { margin: 3px 0; }
+        .patient-name { font-weight: 600; color: var(--dark); }
+        .appointment-time { color: var(--primary); }
+        .appointments-list { max-height: 400px; overflow-y: auto; margin-top: 20px; padding-right: 10px; }
+        .appointments-list::-webkit-scrollbar { width: 8px; }
+        .appointments-list::-webkit-scrollbar-thumb { background-color: #c1c1c1; border-radius: 4px; }
+        .appointment-card { background-color: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid var(--primary); }
+        .appointment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .appointment-date { font-weight: 600; color: var(--primary); }
+        .appointment-actions { display: flex; gap: 10px; }
+        .delete-btn { background-color: var(--danger); color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 0.85rem; }
+        .month-navigation { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .month-navigation button { background-color: var(--primary); color: white; border: none; border-radius: 6px; padding: 8px 15px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .current-month { font-size: 1.4rem; font-weight: 600; color: var(--dark); }
+        .no-appointments { text-align: center; padding: 30px; color: #6c757d; font-style: italic; }
+        .notification { position: fixed; top: 20px; right: 20px; padding: 15px 20px; border-radius: 6px; color: white; font-weight: 600; z-index: 1000; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; }
+        .notification.show { opacity: 1; transform: translateY(0); }
+        .notification.success { background-color: var(--success); }
+        .notification.error { background-color: var(--danger); }
+        .instructions { background-color: rgba(42,157,143,0.1); border-radius: 8px; padding: 15px; margin-bottom: 20px; border-right: 4px solid var(--primary); }
+        .doctor-login { text-align: center; padding: 40px 20px; background-color: #f8f9fa; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .password-input-container { position: relative; max-width: 400px; margin: 0 auto 20px; }
+        .password-toggle { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #6c757d; cursor: pointer; }
+        .doctor-content { display: none; }
+        .doctor-content.unlocked { display: block; animation: fadeIn 0.5s ease; }
+        .password-hint { font-size: 0.9rem; color: #6c757d; margin-top: 10px; }
+        .logout-btn { background-color: var(--danger); color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer; font-size: 0.9rem; margin-top: 20px; display: inline-flex; align-items: center; gap: 8px; }
+        @media (max-width: 768px) { .calendar { grid-template-columns: repeat(1, 1fr); } .calendar-day { min-height: 80px; } .tabs { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-tooth"></i> نظام حجز مواعيد عيادة الأسنان</h1>
+            <p>ادخل بياناتك لحجز موعد أو قم بإدارة المواعيد كطبيب</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="patient"><i class="fas fa-user-injured"></i> واجهة المريض</button>
+            <button class="tab-btn" data-tab="doctor"><i class="fas fa-user-md"></i> واجهة الطبيب</button>
+        </div>
+
+        <div id="patient" class="tab-content active">
+            <div class="instructions">
+                <h3><i class="fas fa-info-circle"></i> تعليمات الحجز</h3>
+                <p>• يرجى ملء جميع الحقول المطلوبة لحجز موعد.</p>
+                <p>• يمكنك تحديد التاريخ والوقت المناسبين لك.</p>
+                <p>• ستتلقى تأكيد الحجز فور إكمال النموذج.</p>
+            </div>
+
+            <form id="appointmentForm">
+                <div class="form-group"><label for="patientName"><i class="fas fa-user"></i> الاسم الكامل</label><input type="text" id="patientName" required placeholder="أدخل اسمك الكامل"></div>
+                <div class="form-group"><label for="phoneNumber"><i class="fas fa-phone"></i> رقم الهاتف</label><input type="tel" id="phoneNumber" required placeholder="أدخل رقم هاتفك"></div>
+                <div class="form-group"><label for="appointmentDate"><i class="fas fa-calendar-alt"></i> تاريخ الموعد</label><input type="date" id="appointmentDate" required></div>
+                <div class="form-group"><label for="appointmentTime"><i class="fas fa-clock"></i> وقت الموعد</label>
+                    <select id="appointmentTime" required>
+                        <option value="" disabled selected>اختر الوقت المناسب</option>
+                        <option value="09:00">09:00 صباحاً</option><option value="10:00">10:00 صباحاً</option><option value="11:00">11:00 صباحاً</option>
+                        <option value="12:00">12:00 ظهراً</option><option value="13:00">01:00 ظهراً</option><option value="14:00">02:00 بعد الظهر</option>
+                        <option value="15:00">03:00 بعد الظهر</option><option value="16:00">04:00 بعد الظهر</option>
+                    </select>
+                </div>
+                <div class="form-group"><label for="treatmentType"><i class="fas fa-teeth"></i> نوع العلاج</label>
+                    <select id="treatmentType" required>
+                        <option value="" disabled selected>اختر نوع العلاج</option>
+                        <option value="فحص دوري">فحص دوري</option><option value="تنظيف الأسنان">تنظيف الأسنان</option>
+                        <option value="حشو الأسنان">حشو الأسنان</option><option value="خلع الأسنان">خلع الأسنان</option>
+                        <option value="تقويم الأسنان">تقويم الأسنان</option><option value="تبييض الأسنان">تبييض الأسنان</option>
+                        <option value="علاج عصب">علاج عصب</option><option value="تركيب طقم">تركيب طقم</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn"><i class="fas fa-calendar-check"></i> احجز الموعد</button>
+            </form>
+
+            <div id="patientAppointments" class="appointments-list" style="margin-top: 40px;">
+                <h3><i class="fas fa-history"></i> مواعيدي المحجوزة</h3>
+                <div id="patientAppointmentsList"></div>
+            </div>
+        </div>
+
+        <div id="doctor" class="tab-content">
+            <div class="doctor-login" id="doctorLogin">
+                <h3><i class="fas fa-lock"></i> الدخول إلى واجهة الطبيب</h3>
+                <p>يجب إدخال كلمة المرور للوصول إلى واجهة الطبيب</p>
+                <div class="form-group">
+                    <div class="password-input-container">
+                        <input type="password" id="doctorPassword" placeholder="أدخل كلمة المرور">
+                        <button type="button" class="password-toggle" id="togglePassword"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <p class="password-hint">كلمة المرور: 12345678</p>
+                </div>
+                <button class="btn" id="loginBtn"><i class="fas fa-sign-in-alt"></i> دخول</button>
+            </div>
+
+            <div class="doctor-content" id="doctorContent">
+                <div class="instructions">
+                    <h3><i class="fas fa-user-md"></i> إدارة مواعيد العيادة</h3>
+                    <p>• هنا يمكنك عرض جميع المواعيد المحجوزة حسب التاريخ.</p>
+                    <p>• اضغط على أي يوم في التقويم لرؤية المواعيد الخاصة به.</p>
+                    <p>• يمكنك حذف المواعيد من خلال زر الحذف.</p>
+                </div>
+
+                <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
+
+                <div class="month-navigation">
+                    <button id="prevMonth"><i class="fas fa-chevron-right"></i> الشهر السابق</button>
+                    <h2 class="current-month" id="currentMonth">شهر 2023</h2>
+                    <button id="nextMonth">الشهر التالي <i class="fas fa-chevron-left"></i></button>
+                </div>
+
+                <div class="calendar" id="calendar"></div>
+
+                <div class="appointments-list" style="margin-top: 40px;">
+                    <h3><i class="fas fa-list-alt"></i> جميع المواعيد المحجوزة</h3>
+                    <div id="allAppointmentsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // عناصر DOM
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const appointmentForm = document.getElementById('appointmentForm');
+        const patientAppointmentsList = document.getElementById('patientAppointmentsList');
+        const allAppointmentsList = document.getElementById('allAppointmentsList');
+        const calendar = document.getElementById('calendar');
+        const currentMonthEl = document.getElementById('currentMonth');
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        const notification = document.getElementById('notification');
+        const doctorLogin = document.getElementById('doctorLogin');
+        const doctorContent = document.getElementById('doctorContent');
+        const doctorPasswordInput = document.getElementById('doctorPassword');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const togglePasswordBtn = document.getElementById('togglePassword');
+
+        // كلمة المرور الصحيحة
+        const CORRECT_PASSWORD = "12345678";
+
+        // متغيرات النظام
+        let currentDate = new Date();
+        let currentMonth = currentDate.getMonth();
+        let currentYear = currentDate.getFullYear();
+        let appointments = JSON.parse(localStorage.getItem('dentistAppointments')) || [];
+        let isDoctorLoggedIn = localStorage.getItem('doctorLoggedIn') === 'true';
+
+        // دالة إرسال بيانات الحجز لـ Pipedream
+        async function sendToPipedream(appointment) {
+            const webhookUrl = 'https://eoxyska6kv6e898.m.pipedream.net';
+            
+            const bookingData = {
+                booking_id: appointment.id,
+                customer_name: appointment.patientName,
+                phone: appointment.phoneNumber,
+                service: appointment.treatmentType,
+                date: appointment.appointmentDate,
+                time: appointment.appointmentTime,
+                persons: 1,
+                system: "نظام حجز طبيب الأسنان"
+            };
+            
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(bookingData)
+                });
+                
+                console.log('✅ تم إرسال بيانات الحجز لـ Pipedream');
+            } catch (error) {
+                console.error('❌ خطأ في إرسال البيانات لـ Pipedream:', error);
+            }
+        }
+
+        // تهيئة النظام
+        function init() {
+            if (isDoctorLoggedIn) unlockDoctorContent();
+            renderPatientAppointments();
+            renderCalendar();
+            renderAllAppointments();
+        }
+
+        // تبديل التبويبات
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.getAttribute('data-tab');
+                tabBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === tabId) content.classList.add('active');
+                });
+                if (tabId === 'doctor' && !isDoctorLoggedIn) {
+                    doctorPasswordInput.value = '';
+                    doctorContent.classList.remove('unlocked');
+                    doctorLogin.style.display = 'block';
+                }
+                if (tabId === 'doctor' && isDoctorLoggedIn) unlockDoctorContent();
+            });
+        });
+
+        // تحميل التاريخ الافتراضي
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const todayFormatted = today.toISOString().split('T')[0];
+        const tomorrowFormatted = tomorrow.toISOString().split('T')[0];
+        document.getElementById('appointmentDate').min = todayFormatted;
+        document.getElementById('appointmentDate').value = tomorrowFormatted;
+
+        // إرسال نموذج حجز الموعد
+        appointmentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const patientName = document.getElementById('patientName').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const appointmentDate = document.getElementById('appointmentDate').value;
+            const appointmentTime = document.getElementById('appointmentTime').value;
+            const treatmentType = document.getElementById('treatmentType').value;
+            
+            const appointment = {
+                id: Date.now(),
+                patientName,
+                phoneNumber,
+                appointmentDate,
+                appointmentTime,
+                treatmentType,
+                bookedAt: new Date().toISOString()
+            };
+            
+            appointments.push(appointment);
+            localStorage.setItem('dentistAppointments', JSON.stringify(appointments));
+            
+            // إرسال البيانات لـ Pipedream
+            sendToPipedream(appointment);
+            
+            showNotification('تم حجز الموعد بنجاح!', 'success');
+            appointmentForm.reset();
+            document.getElementById('appointmentDate').value = tomorrowFormatted;
+            renderPatientAppointments();
+            
+            if (document.getElementById('doctor').classList.contains('active') && isDoctorLoggedIn) {
+                renderCalendar();
+                renderAllAppointments();
+            }
+        });
+
+        // عرض إشعار
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+
+        // عرض مواعيد المريض
+        function renderPatientAppointments() {
+            if (appointments.length === 0) {
+                patientAppointmentsList.innerHTML = '<div class="no-appointments">لا توجد مواعيد محجوزة</div>';
+                return;
+            }
+            
+            const sortedAppointments = [...appointments].sort((a, b) => 
+                new Date(b.appointmentDate) - new Date(a.appointmentDate));
+            
+            patientAppointmentsList.innerHTML = sortedAppointments.map(appointment => {
+                const date = new Date(appointment.appointmentDate);
+                const formattedDate = date.toLocaleDateString('ar-SA', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                return `
+                    <div class="appointment-card">
+                        <div class="appointment-header">
+                            <span class="appointment-date">${formattedDate}</span>
+                            <span class="appointment-time">${appointment.appointmentTime}</span>
+                        </div>
+                        <p><strong>الاسم:</strong> ${appointment.patientName}</p>
+                        <p><strong>الهاتف:</strong> ${appointment.phoneNumber}</p>
+                        <p><strong>نوع العلاج:</strong> ${appointment.treatmentType}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // عرض جميع المواعيد للطبيب
+        function renderAllAppointments() {
+            if (appointments.length === 0) {
+                allAppointmentsList.innerHTML = '<div class="no-appointments">لا توجد مواعيد محجوزة بعد</div>';
+                return;
+            }
+            
+            const sortedAppointments = [...appointments].sort((a, b) => 
+                new Date(a.appointmentDate) - new Date(b.appointmentDate));
+            
+            allAppointmentsList.innerHTML = sortedAppointments.map(appointment => {
+                const date = new Date(appointment.appointmentDate);
+                const formattedDate = date.toLocaleDateString('ar-SA', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                return `
+                    <div class="appointment-card">
+                        <div class="appointment-header">
+                            <span class="appointment-date">${formattedDate}</span>
+                            <div class="appointment-actions">
+                                <span class="appointment-time">${appointment.appointmentTime}</span>
+                                <button class="delete-btn" onclick="deleteAppointment(${appointment.id})">
+                                    <i class="fas fa-trash"></i> حذف
+                                </button>
+                            </div>
+                        </div>
+                        <p><strong>الاسم:</strong> ${appointment.patientName}</p>
+                        <p><strong>الهاتف:</strong> ${appointment.phoneNumber}</p>
+                        <p><strong>نوع العلاج:</strong> ${appointment.treatmentType}</p>
+                        <p><strong>رقم الحجز:</strong> ${appointment.id}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // حذف موعد
+        window.deleteAppointment = function(id) {
+            if (confirm('هل أنت متأكد من حذف هذا الموعد؟')) {
+                appointments = appointments.filter(appointment => appointment.id !== id);
+                localStorage.setItem('dentistAppointments', JSON.stringify(appointments));
+                renderCalendar();
+                renderAllAppointments();
+                renderPatientAppointments();
+                showNotification('تم حذف الموعد بنجاح', 'success');
+            }
+        };
+
+        // عرض التقويم
+        function renderCalendar() {
+            const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+            currentMonthEl.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+            
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDay = firstDay.getDay();
+            
+            const weekdays = ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
+            calendar.innerHTML = '';
+            
+            weekdays.forEach(day => {
+                const dayElement = document.createElement('div');
+                dayElement.classList.add('calendar-header');
+                dayElement.textContent = day;
+                calendar.appendChild(dayElement);
+            });
+            
+            for (let i = 0; i < startingDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.classList.add('calendar-day');
+                calendar.appendChild(emptyDay);
+            }
+            
+            const today = new Date();
+            const isCurrentMonth = today.getMonth() === currentMonth && today.getFullYear() === currentYear;
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.classList.add('calendar-day');
+                if (isCurrentMonth && day === today.getDate()) dayElement.classList.add('today');
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.classList.add('day-number');
+                dayNumber.textContent = day;
+                dayElement.appendChild(dayNumber);
+                
+                const dayDate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayAppointments = appointments.filter(app => app.appointmentDate === dayDate);
+                
+                if (dayAppointments.length > 0) {
+                    const appointmentsContainer = document.createElement('div');
+                    appointmentsContainer.classList.add('appointments');
+                    dayAppointments.forEach(app => {
+                        const appointmentEl = document.createElement('div');
+                        appointmentEl.classList.add('appointment-item');
+                        appointmentEl.innerHTML = `<p class="patient-name">${app.patientName}</p><p class="appointment-time">${app.appointmentTime}</p>`;
+                        appointmentsContainer.appendChild(appointmentEl);
+                    });
+                    dayElement.appendChild(appointmentsContainer);
+                }
+                
+                calendar.appendChild(dayElement);
+            }
+        }
+
+        // التنقل بين الأشهر
+        prevMonthBtn.addEventListener('click', () => {
+            currentMonth--;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            renderCalendar();
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            renderCalendar();
+        });
+
+        // نظام الحماية لواجهة الطبيب
+        loginBtn.addEventListener('click', function() {
+            const enteredPassword = doctorPasswordInput.value;
+            if (enteredPassword === CORRECT_PASSWORD) {
+                unlockDoctorContent();
+                localStorage.setItem('doctorLoggedIn', 'true');
+                isDoctorLoggedIn = true;
+                showNotification('تم الدخول بنجاح إلى واجهة الطبيب', 'success');
+            } else {
+                showNotification('كلمة المرور غير صحيحة. حاول مرة أخرى.', 'error');
+                doctorPasswordInput.value = '';
+                doctorPasswordInput.focus();
+            }
+        });
+
+        doctorPasswordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+
+        logoutBtn.addEventListener('click', function() {
+            if (confirm('هل تريد تسجيل الخروج من واجهة الطبيب؟')) {
+                lockDoctorContent();
+                localStorage.setItem('doctorLoggedIn', 'false');
+                isDoctorLoggedIn = false;
+                showNotification('تم تسجيل الخروج بنجاح', 'success');
+            }
+        });
+
+        togglePasswordBtn.addEventListener('click', function() {
+            const type = doctorPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            doctorPasswordInput.setAttribute('type', type);
+            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        });
+
+        function unlockDoctorContent() {
+            doctorLogin.style.display = 'none';
+            doctorContent.classList.add('unlocked');
+            renderCalendar();
+            renderAllAppointments();
+        }
+
+        function lockDoctorContent() {
+            doctorLogin.style.display = 'block';
+            doctorContent.classList.remove('unlocked');
+            doctorPasswordInput.value = '';
+        }
+
+        // التهيئة الأولية
+        init();
+    </script>
+</body>
+</html>
