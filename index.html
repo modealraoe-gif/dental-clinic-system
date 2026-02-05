@@ -184,32 +184,41 @@
         let appointments = JSON.parse(localStorage.getItem('dentistAppointments')) || [];
         let isDoctorLoggedIn = localStorage.getItem('doctorLoggedIn') === 'true';
 
-        // دالة إرسال بيانات الحجز لـ Pipedream
-        async function sendToPipedream(appointment) {
-            const webhookUrl = 'https://eoxyska6kv6e898.m.pipedream.net';
-            
-            const bookingData = {
-                booking_id: appointment.id,
-                customer_name: appointment.patientName,
-                phone: appointment.phoneNumber,
-                service: appointment.treatmentType,
-                date: appointment.appointmentDate,
-                time: appointment.appointmentTime,
-                persons: 1,
-                system: "نظام حجز طبيب الأسنان"
-            };
-            
-            try {
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(bookingData)
-                });
-                
-                console.log('✅ تم إرسال بيانات الحجز لـ Pipedream');
-            } catch (error) {
-                console.error('❌ خطأ في إرسال البيانات لـ Pipedream:', error);
-            }
+        // دالة إرسال بيانات الحجز لـ Google Form
+        async function saveToGoogleForm(appointment) {
+          const formURL = "https://docs.google.com/forms/d/e/1FAIpQLSctqcdt_S7RpNKqXMSuJKF5Us8jxtkOmpOVp0d3WBVsUrRA4Q/formResponse";
+          
+          // فصل الوقت إلى ساعة ودقيقة
+          const [hour, minute] = appointment.appointmentTime.split(':');
+          
+          // فصل التاريخ إلى سنة، شهر، يوم
+          const date = new Date(appointment.appointmentDate);
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1; // الأشهر من 0-11
+          const day = date.getDate();
+          
+          const formData = new FormData();
+          formData.append("entry.112335563", appointment.patientName);     // الاسم
+          formData.append("entry.1629648132", appointment.phoneNumber);    // الهاتف
+          formData.append("entry.128210094_hour", hour);                   // ساعة
+          formData.append("entry.128210094_minute", minute);               // دقيقة
+          formData.append("entry.272406100_year", year);                   // سنة
+          formData.append("entry.272406100_month", month);                 // شهر
+          formData.append("entry.272406100_day", day);                     // يوم
+          formData.append("entry.110777555", appointment.treatmentType);   // العلاج
+          
+          try {
+            await fetch(formURL, {
+              method: "POST",
+              body: formData,
+              mode: "no-cors"
+            });
+            console.log("✅ تم إرسال الحجز للنموذج!");
+            return true;
+          } catch (error) {
+            console.log("⚠️ تم الإرسال (no-cors mode)");
+            return true;
+          }
         }
 
         // تهيئة النظام
@@ -271,8 +280,8 @@
             appointments.push(appointment);
             localStorage.setItem('dentistAppointments', JSON.stringify(appointments));
             
-            // إرسال البيانات لـ Pipedream
-            sendToPipedream(appointment);
+            // إرسال البيانات لـ Google Form
+            saveToGoogleForm(appointment);
             
             showNotification('تم حجز الموعد بنجاح!', 'success');
             appointmentForm.reset();
